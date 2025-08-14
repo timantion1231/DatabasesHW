@@ -1,0 +1,45 @@
+WITH CarStats AS (
+    SELECT 
+        c.name AS car_name,
+        c.class AS car_class,
+        AVG(r.position) AS avg_pos,
+        COUNT(r.race) AS race_count
+    FROM Results r
+    JOIN Cars c ON r.car = c.name
+    GROUP BY c.name, c.class
+),
+LowPositionCars AS (
+    SELECT 
+        car_class,
+        COUNT(*) AS low_position_count
+    FROM CarStats
+    WHERE avg_pos > 3.0
+    GROUP BY car_class
+),
+MaxLowPosition AS (
+    SELECT MAX(low_position_count) AS max_count
+    FROM LowPositionCars
+),
+ClassRaceCount AS (
+    SELECT 
+        c.class,
+        COUNT(*) AS total_races
+    FROM Results r
+    JOIN Cars c ON r.car = c.name
+    GROUP BY c.class
+)
+SELECT 
+    cs.car_name,
+    cs.car_class,
+    ROUND(cs.avg_pos::numeric, 4) AS average_position,
+    cs.race_count,
+    cl.country AS car_country,
+    crc.total_races,
+    lpc.low_position_count
+FROM CarStats cs
+JOIN LowPositionCars lpc ON cs.car_class = lpc.car_class
+JOIN MaxLowPosition mlp ON lpc.low_position_count = mlp.max_count
+JOIN Classes cl ON cs.car_class = cl.class
+JOIN ClassRaceCount crc ON cs.car_class = crc.class
+WHERE cs.avg_pos > 3.0
+ORDER BY lpc.low_position_count DESC;

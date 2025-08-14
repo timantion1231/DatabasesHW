@@ -1,0 +1,41 @@
+WITH ClassAvg AS (
+    SELECT 
+        c.class,
+        AVG(r.position) AS class_avg,
+        COUNT(*) AS total_races
+    FROM Results r
+    JOIN Cars c ON r.car = c.name
+    GROUP BY c.class
+),
+MinClass AS (
+    SELECT MIN(class_avg) AS min_avg
+    FROM ClassAvg
+),
+QualifiedClasses AS (
+    SELECT 
+        ca.class,
+        ca.total_races
+    FROM ClassAvg ca
+    JOIN MinClass mc ON ca.class_avg = mc.min_avg
+),
+CarStats AS (
+    SELECT 
+        c.name AS car_name,
+        c.class AS car_class,
+        AVG(r.position) AS avg_pos,
+        COUNT(r.race) AS race_count
+    FROM Results r
+    JOIN Cars c ON r.car = c.name
+    GROUP BY c.name, c.class
+)
+SELECT 
+    cs.car_name,
+    cs.car_class,
+    ROUND(cs.avg_pos::numeric, 4) AS average_position,
+    cs.race_count,
+    cl.country AS car_country,
+    qc.total_races
+FROM CarStats cs
+JOIN QualifiedClasses qc ON cs.car_class = qc.class
+JOIN Classes cl ON cs.car_class = cl.class
+ORDER BY cs.avg_pos;

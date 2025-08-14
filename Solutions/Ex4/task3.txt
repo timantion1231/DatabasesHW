@@ -1,0 +1,47 @@
+WITH RECURSIVE ManagerHierarchy AS (
+    SELECT 
+        EmployeeID AS root_manager,
+        EmployeeID,
+        ManagerID
+    FROM Employees
+    WHERE RoleID = (SELECT RoleID FROM Roles WHERE RoleName = 'Менеджер')
+    
+    UNION ALL
+    
+    SELECT 
+        mh.root_manager,
+        e.EmployeeID,
+        e.ManagerID
+    FROM Employees e
+    INNER JOIN ManagerHierarchy mh ON e.ManagerID = mh.EmployeeID
+),
+ManagerStats AS (
+    SELECT 
+        root_manager AS EmployeeID,
+        COUNT(*) - 1 AS TotalSubordinates  -- Исключаем самого менеджера
+    FROM ManagerHierarchy
+    GROUP BY root_manager
+    HAVING COUNT(*) > 1  -- Только менеджеры с подчиненными
+)
+SELECT 
+    ms.EmployeeID,
+    e.Name AS EmployeeName,
+    e.ManagerID,
+    d.DepartmentName,
+    r.RoleName,
+    STRING_AGG(DISTINCT p.ProjectName, ', ') AS ProjectNames,
+    STRING_AGG(DISTINCT t.TaskName, ', ') AS TaskNames,
+    ms.TotalSubordinates
+FROM ManagerStats ms
+JOIN Employees e ON ms.EmployeeID = e.EmployeeID
+JOIN Departments d ON e.DepartmentID = d.DepartmentID
+JOIN Roles r ON e.RoleID = r.RoleID
+LEFT JOIN Projects p ON d.DepartmentID = p.DepartmentID
+LEFT JOIN Tasks t ON e.EmployeeID = t.AssignedTo
+GROUP BY 
+    ms.EmployeeID,
+    e.Name,
+    e.ManagerID,
+    d.DepartmentName,
+    r.RoleName,
+    ms.TotalSubordinates;

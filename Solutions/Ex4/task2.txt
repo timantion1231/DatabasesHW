@@ -1,0 +1,63 @@
+WITH RECURSIVE Subordinates AS (
+    SELECT 
+        EmployeeID,
+        Name,
+        ManagerID,
+        DepartmentID,
+        RoleID
+    FROM Employees
+    WHERE EmployeeID = 1  -- Иван Иванов
+    
+    UNION ALL
+    
+    SELECT 
+        e.EmployeeID,
+        e.Name,
+        e.ManagerID,
+        e.DepartmentID,
+        e.RoleID
+    FROM Employees e
+    INNER JOIN Subordinates s ON e.ManagerID = s.EmployeeID
+),
+EmployeeData AS (
+    SELECT 
+        s.EmployeeID,
+        s.Name,
+        s.ManagerID,
+        d.DepartmentName,
+        r.RoleName,
+        STRING_AGG(DISTINCT p.ProjectName, ', ') AS ProjectNames,
+        STRING_AGG(DISTINCT t.TaskName, ', ') AS TaskNames,
+        COUNT(DISTINCT t.TaskID) AS TotalTasks
+    FROM Subordinates s
+    JOIN Departments d ON s.DepartmentID = d.DepartmentID
+    JOIN Roles r ON s.RoleID = r.RoleID
+    LEFT JOIN Projects p ON d.DepartmentID = p.DepartmentID
+    LEFT JOIN Tasks t ON s.EmployeeID = t.AssignedTo
+    GROUP BY 
+        s.EmployeeID, 
+        s.Name, 
+        s.ManagerID, 
+        d.DepartmentName, 
+        r.RoleName
+),
+DirectReports AS (
+    SELECT 
+        ManagerID,
+        COUNT(*) AS TotalSubordinates
+    FROM Employees
+    GROUP BY ManagerID
+)
+SELECT 
+    ed.EmployeeID,
+    ed.Name AS EmployeeName,
+    ed.ManagerID,
+    ed.DepartmentName,
+    ed.RoleName,
+    ed.ProjectNames,
+    ed.TaskNames,
+    ed.TotalTasks,
+    COALESCE(dr.TotalSubordinates, 0) AS TotalSubordinates
+FROM EmployeeData ed
+LEFT JOIN DirectReports dr ON ed.EmployeeID = dr.ManagerID
+ORDER BY ed.Name;

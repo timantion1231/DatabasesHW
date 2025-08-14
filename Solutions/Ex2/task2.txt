@@ -1,0 +1,20 @@
+WITH CarStats AS (
+    SELECT 
+        c.name AS car_name,
+        c.class AS car_class,
+        AVG(r.position) AS average_position,
+        COUNT(r.race) AS race_count
+    FROM Results r
+    JOIN Cars c ON r.car = c.name
+    GROUP BY c.name, c.class
+)
+SELECT 
+    cs.car_name,
+    cs.car_class,
+    ROUND(cs.average_position::numeric, 4) AS average_position,
+    cs.race_count,
+    cl.country AS car_country
+FROM CarStats cs
+JOIN Classes cl ON cs.car_class = cl.class
+ORDER BY cs.average_position, cs.car_name
+LIMIT 1;
